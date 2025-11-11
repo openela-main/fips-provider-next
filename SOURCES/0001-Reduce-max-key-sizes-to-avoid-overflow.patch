@@ -1,0 +1,42 @@
+From e2019967aa415efa76ae986a2e76c665420d381d Mon Sep 17 00:00:00 2001
+From: Simo Sorce <simo@redhat.com>
+Date: Wed, 2 Jul 2025 09:14:48 -0400
+Subject: [PATCH] Reduce max key sizes to avoid overflow
+
+On i686 the value 0xffffffff is the maximum value that a CK_ULONG can
+carry, which causes an overflow when we use ($val + 7 )/ 8 to convert
+bits to bytes.
+
+Given that it is never reasonable to have keys that are gigabits long
+anyway let's clam the max down to 16M bits (2MiB) for now.
+
+Signed-off-by: Simo Sorce <simo@redhat.com>
+---
+ src/fips/indicators.rs | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/fips/indicators.rs b/src/fips/indicators.rs
+index 616f14a..7ed42b5 100644
+--- a/src/fips/indicators.rs
++++ b/src/fips/indicators.rs
+@@ -960,7 +960,7 @@ const FIPS_CHECKS: FipsChecks = FipsChecks {
+             operations: CKF_DERIVE,
+             restrictions: [
+                 restrict!(CKK_AES),
+-                restrict!(KRY_UNSPEC, range!(112, 0xffffffff)),
++                restrict!(KRY_UNSPEC, range!(112, 0x1000000)),
+             ],
+             genflags: CKF_SIGN
+                 | CKF_VERIFY
+@@ -975,7 +975,7 @@ const FIPS_CHECKS: FipsChecks = FipsChecks {
+             operations: CKF_DERIVE,
+             restrictions: [
+                 restrict!(CKK_AES),
+-                restrict!(KRY_UNSPEC, range!(112, 0xffffffff)),
++                restrict!(KRY_UNSPEC, range!(112, 0x1000000)),
+             ],
+             genflags: CKF_SIGN
+                 | CKF_VERIFY
+-- 
+2.49.0
+
