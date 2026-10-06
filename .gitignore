@@ -1,3 +1,3 @@
-SOURCES/kryoptic-1.2.0.tar.gz
-SOURCES/kryoptic-vendor-1.2.0.tar.gz
-SOURCES/openssl-3.5.1.tar.gz
+SOURCES/openssl-4.0.1.tar.gz
+SOURCES/kryoptic-1.5.2.tar.gz
+SOURCES/kryoptic-vendor-1.5.2.tar.gz

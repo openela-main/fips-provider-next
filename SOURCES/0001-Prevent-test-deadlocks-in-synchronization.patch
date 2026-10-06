@@ -1,0 +1,56 @@
+From 9dbf68e12ab06c7171c83e6f34d8a4b50605f09a Mon Sep 17 00:00:00 2001
+From: Simo Sorce <simo@redhat.com>
+Date: Mon, 6 Jul 2026 12:50:02 -0400
+Subject: [PATCH] Prevent test deadlocks in synchronization
+
+Replaced the blocking `write()` lock acquisition on the SYNC primitive with a
+polling loop using `try_write()` and a short sleep. A queued write lock could
+block incoming `read()` attempts, leading to deadlocks during test
+finalization. Using `try_write()` ensures that pending reads can complete
+safely.
+
+Signed-off-by: Simo Sorce <simo@redhat.com>
+---
+ src/tests/mod.rs | 18 +++++++++++++++++-
+ 1 file changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/src/tests/mod.rs b/src/tests/mod.rs
+index 5f4e576..292fbd7 100644
+--- a/src/tests/mod.rs
++++ b/src/tests/mod.rs
+@@ -5,6 +5,8 @@ use std::ffi::CString;
+ use std::fs::{create_dir_all, remove_dir_all, OpenOptions};
+ use std::io::Write;
+ use std::sync::Once;
++use std::thread;
++use std::time::Duration;
+ 
+ #[cfg(feature = "log")]
+ use crate::log;
+@@ -198,8 +200,22 @@ impl TestToken<'_> {
+             drop(FINI.read().unwrap());
+         } else {
+             self.sync = None;
++
+             /* wait for all others to complete */
+-            drop(SYNC.write().unwrap());
++            loop {
++                /* This needs to use try_write() because a queued write lock
++                 * may actually block read() attempts, which would cause
++                 * tests to deadlock, sleeps between attempts. */
++                thread::sleep(Duration::from_millis(5));
++                match SYNC.try_write() {
++                    Ok(lock) => {
++                        drop(lock);
++                        break;
++                    }
++                    Err(_) => (),
++                }
++            }
++
+             let ret = fn_finalize(std::ptr::null_mut());
+             assert_eq!(ret, CKR_OK);
+             /* winner finalized and completed the tests */
+-- 
+2.55.0
+
